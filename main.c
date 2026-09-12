@@ -23,29 +23,29 @@ typedef struct Token
 {
     // General Stuff
     TokenType type;
-    int value;
+    long long value;
 
     // General Stuff (OG)
     TokenType ogType;
-    int ogValue;
+    long long ogValue;
 
     // Specific for Lists/List-Items
     struct Token *parent;
     struct Token *children;
-    int childCount;
+    long long childCount;
 
     // Specific for Dice
-    int maxValue;
-    int result;
-    int *results;
-    int resultCount;
-    int validResultCount;
+    long long maxValue;
+    long long result;
+    long long *results;
+    long long resultCount;
+    long long validResultCount;
 } Token;
 
 typedef struct Var
 {
     char *name;
-    int value;
+    long long value;
 } Var;
 
 typedef struct Macro
@@ -54,7 +54,7 @@ typedef struct Macro
     char *value;
 
     char **parameters;
-    int paramCount;
+    long long paramCount;
 } Macro;
 
 typedef enum CONFIGS
@@ -70,7 +70,7 @@ typedef enum CONFIGS
 const char *GLOBAL_NAMES[CONFIG_COUNT] = {"DEBUG_MESSAGES", "SHOW_LOADED", "FULL_DICES", "FULL_LISTS", "FULL_LOOPS"};
 bool GLOBAL_CONFIGS[CONFIG_COUNT];
 
-const int opPriority[256] = {
+const char opPriority[] = {
     ['|'] = 0,
     ['&'] = 1,
     ['='] = 2,
@@ -98,8 +98,8 @@ int spacing;
 const char *configPath = "./ydice.config";
 
 // --- FUNCTIONS ---
-int Tokenizer(char *str);
-int Calculate(Token *parent, int id, int op);
+long long Tokenizer(char *str);
+long long Calculate(Token *parent, long long id, int op);
 int Error(const char *errorType, const char *error, const char *extra)
 {
     printf("\x1b[91m");
@@ -156,8 +156,8 @@ bool AllowedChar(char c)
 
 int AdvCompare(const void *a, const void *b)
 {
-    int int_a = *((int *)a);
-    int int_b = *((int *)b);
+    long long int_a = *((int *)a);
+    long long int_b = *((int *)b);
 
     if (int_a > int_b)
         return -1;
@@ -168,8 +168,8 @@ int AdvCompare(const void *a, const void *b)
 
 int DsvCompare(const void *a, const void *b)
 {
-    int int_a = *((int *)a);
-    int int_b = *((int *)b);
+    long long int_a = *((int *)a);
+    long long int_b = *((int *)b);
 
     if (int_a < int_b)
         return -1;
@@ -178,7 +178,7 @@ int DsvCompare(const void *a, const void *b)
     return 0;
 }
 
-void AddToken(TokenType type, int value)
+void AddToken(TokenType type, long long value)
 {
     Token token;
     token.type = type;
@@ -200,7 +200,7 @@ void AddToken(TokenType type, int value)
     currentToken->children = (Token *)realloc(currentToken->children, sizeof(Token) * currentToken->childCount);
     currentToken->children[currentToken->childCount - 1] = token;
 
-    PrintMessage("ADDED <%s><%d>\n", GetTypeString(type), value);
+    PrintMessage("ADDED <%s><%lld>\n", GetTypeString(type), value);
     Token *tokenRef = &currentToken->children[currentToken->childCount - 1];
     if (type == TYPE_LIST)
     {
@@ -208,7 +208,7 @@ void AddToken(TokenType type, int value)
         currentToken = tokenRef;
     }
     else if (type == TYPE_DICE)
-        tokenRef->results = (int *)malloc(sizeof(int));
+        tokenRef->results = (long long *)malloc(sizeof(long long));
 }
 
 int AddVar(char *id)
@@ -226,7 +226,7 @@ int AddVar(char *id)
     if (var == NULL)
         return Error("VAR", "No Var named ", id);
 
-    PrintMessage("VAR <%s> ADDED AS <%d>\n", id, var->value);
+    PrintMessage("VAR <%s> ADDED AS <%lld>\n", id, var->value);
     AddToken(TYPE_CONSTANT, var->value);
 }
 
@@ -319,7 +319,7 @@ int AddMacro(char *id, char **parameters, int paramCount)
     Tokenizer(fixedStr);
 }
 
-void AddNewVar(char *name, int value)
+void AddNewVar(char *name, long long value)
 {
     Var newVar;
     newVar.value = value;
@@ -398,14 +398,14 @@ void Init()
     currentToken = &tokens;
 }
 
-int Tokenizer(char *str)
+long long Tokenizer(char *str)
 {
     int strlength = strlen(str);
     int counter = 0;
-    int num = 0;
+    long long num = 0;
     bool numNull = true;
 
-    for (int i = 0; i < strlength; i++)
+    for (unsigned long long i = 0; i < strlength; i++)
     {
         char c = str[i];
         switch (c)
@@ -676,7 +676,7 @@ int Tokenizer(char *str)
     }
 }
 
-int CalculateDice(Token *parent, int id)
+long long CalculateDice(Token *parent, long long id)
 {
     if (id >= parent->childCount)
         return -1;
@@ -691,8 +691,8 @@ int CalculateDice(Token *parent, int id)
     else
         return Error("DICE", "Next Token is Null.", "");
 
-    int previousVal = 0;
-    int nextVal = 0;
+    long long previousVal = 0;
+    long long nextVal = 0;
     if (id >= 1 && (parent->children[id - 1].type == TYPE_CONSTANT || parent->children[id - 1].type == TYPE_LIST))
     {
         if (parent->children[id - 1].type == TYPE_LIST)
@@ -722,24 +722,51 @@ int CalculateDice(Token *parent, int id)
 
     current->maxValue = nextVal;
     current->resultCount = previousVal;
-    current->results = (int *)malloc(sizeof(int) * current->resultCount);
-    for (int i = 0; i < previousVal; i++)
-        current->results[i] = (rand() % nextVal) + 1;
+    current->results = (long long *)malloc(sizeof(long long) * current->resultCount);
+    if (nextVal < 0x7fff)
+    {
+        for (long long i = 0; i < previousVal; i++)
+            current->results[i] = (rand() % nextVal) + 1;
+    }
+    else if (nextVal < 0x3fffffff)
+    {
+        for (long long i = 0; i < previousVal; i++)
+        {
+            long long res = ((long long)rand() << 15) | (long long)rand();
+            current->results[i] = (res % nextVal) + 1;
+        }
+    }
+    else if (nextVal < 0x1fffffffffff)
+    {
+        for (long long i = 0; i < previousVal; i++)
+        {
+            long long res = ((long long)rand() << 30) | ((long long)rand()) << 15 | (long long)rand();;
+            current->results[i] = (res % nextVal) + 1;
+        }
+    }
+    else
+    {
+        for (long long i = 0; i < previousVal; i++)
+        {
+            long long res = ((long long)rand() << 45) | ((long long)rand() << 30) | ((long long)rand()) << 15 | (long long)rand();;
+            current->results[i] = (res % nextVal) + 1;
+        }
+    }
 
-    int newID = id;
+    long long newID = id;
     char textMod[3] = "";
     char textModNum[256] = "";
     if (id + 2 < parent->childCount && parent->children[id + 2].type == TYPE_ADV)
     {
         if (parent->children[id + 2].value)
         {
-            qsort(current->results, previousVal, sizeof(int), AdvCompare);
+            qsort(current->results, previousVal, sizeof(long long), AdvCompare);
             textMod[0] = 'v';
             textMod[1] = '\0';
         }
         else
         {
-            qsort(current->results, previousVal, sizeof(int), DsvCompare);
+            qsort(current->results, previousVal, sizeof(long long), DsvCompare);
             textMod[0] = 'd';
             textMod[1] = 'v';
             textMod[2] = '\0';
@@ -751,7 +778,7 @@ int CalculateDice(Token *parent, int id)
             for (int i = 0; i < current->validResultCount; i++)
                 current->result += current->results[i];
 
-            snprintf(textModNum, 256, "%d", current->validResultCount);
+            snprintf(textModNum, 256, "%lld", current->validResultCount);
 
             newID += 3;
             parent->children[newID].type = TYPE_CONSTANT;
@@ -781,16 +808,16 @@ int CalculateDice(Token *parent, int id)
         nextToken->value = current->result;
     }
 
-    PrintMessage("ROLLED %dd%d%s%s | RESULTS: %d\n", previousVal, nextVal, textMod, textModNum, current->result);
+    PrintMessage("ROLLED %lldd%lld%s%s | RESULTS: %lld\n", previousVal, nextVal, textMod, textModNum, current->result);
     return newID;
 }
 
-int Calculate(Token *parent, int id, int op)
+long long Calculate(Token *parent, long long id, int op)
 {
     if (id >= parent->childCount)
         return -1;
 
-    int newID = id;
+    long long newID = id;
     Token *current = &parent->children[id];
     Token *previous = NULL;
     Token *next = NULL;
@@ -817,8 +844,8 @@ int Calculate(Token *parent, int id, int op)
         if (op != 0 && opPriority[current->value] <= op)
             return newID - 1;
 
-        int previousVal = previous->value;
-        int nextVal = 0;
+        long long previousVal = previous->value;
+        long long nextVal = 0;
         bool updateNextNext = false;
         if (next->type == TYPE_UNARY)
         {
@@ -861,7 +888,7 @@ int Calculate(Token *parent, int id, int op)
         else
             Error("OPERATOR", "Next Token is not of Constant, List or Dice Types. ", GetTypeString(next->type));
 
-        int finalVal = 0;
+        long long finalVal = 0;
         switch (current->value)
         {
         case '+':
@@ -885,7 +912,7 @@ int Calculate(Token *parent, int id, int op)
             break;
 
         case '^':
-            finalVal = powf((float)previousVal, (float)nextVal);
+            finalVal = (long long)pow((double)previousVal, (double)nextVal);
             break;
 
         case '>':
@@ -924,7 +951,7 @@ int Calculate(Token *parent, int id, int op)
             return Error("OPERATOR", "Operator is Unknown", "");
         }
 
-        PrintMessage("CALCULATED %d %c %d | RESULT: %d\n", previousVal, current->value, nextVal, finalVal);
+        PrintMessage("CALCULATED %lld %c %lld | RESULT: %lld\n", previousVal, current->value, nextVal, finalVal);
         int idOff = (newID == id);
         parent->children[newID + idOff].value = finalVal;
         if (updateNextNext)
@@ -996,7 +1023,7 @@ int Calculate(Token *parent, int id, int op)
             return Error("UNARY OPERATOR", "Operator is Unknown", "");
         }
 
-        PrintMessage("CALCULATED %c%d | RESULT: %d\n", current->value, nextUnVal, finalUnVal);
+        PrintMessage("CALCULATED %c%lld | RESULT: %lld\n", current->value, nextUnVal, finalUnVal);
         int idOffUn = (newID == id);
         parent->children[newID + idOffUn].value = finalUnVal;
         if (updateNextNextUn)
@@ -1052,7 +1079,7 @@ int Calculate(Token *parent, int id, int op)
 
         Calculate(&next->children[0], 0, 0);
         int loopCount = next->children[0].value;
-        int loopResult = 0;
+        long long loopResult = 0;
         if (loopCount > 1)
         {
             next->children = (Token *)realloc(next->children, sizeof(Token) * (loopCount + 1));
@@ -1060,7 +1087,7 @@ int Calculate(Token *parent, int id, int op)
             for (int l = 2; l < loopCount + 1; l++)
             {
                 spacing--;
-                PrintMessage("-ITERATION %d\n", l - 1);
+                PrintMessage("-ITERATION %lld\n", l - 1);
                 spacing++;
                 next->children[l] = next->children[1];
                 CopyChildren(&next->children[1], &next->children[l]);
@@ -1081,7 +1108,7 @@ int Calculate(Token *parent, int id, int op)
         }
 
         spacing--;
-        PrintMessage("-LOOP END | RESULTS: %d\n", loopResult);
+        PrintMessage("-LOOP END | RESULTS: %lld\n", loopResult);
         current->value = loopResult;
         next->value = loopResult;
         next->type = TYPE_CONSTANT;
@@ -1121,7 +1148,7 @@ int Calculate(Token *parent, int id, int op)
         }
 
         spacing--;
-        PrintMessage("-IF END | RESULTS: %d\n", ifResult);
+        PrintMessage("-IF END | RESULTS: %lld\n", ifResult);
         current->value = ifResult;
         next->value = ifResult;
         next->type = TYPE_CONSTANT;
@@ -1177,12 +1204,12 @@ void PrintResults(Token *parent, int type)
                     else if (current->results[i] == current->maxValue)
                         printf("\x1b[92m");
 
-                    printf(" %d \x1b[0m", current->results[i]);
+                    printf(" %lld \x1b[0m", current->results[i]);
                 }
                 printf("]");
             }
             else
-                printf("[ %d ]", current->result);
+                printf("[ %lld ]", current->result);
 
             break;
 
@@ -1198,7 +1225,7 @@ void PrintResults(Token *parent, int type)
             if (c + 1 < parent->childCount && parent->children[c + 1].ogType == TYPE_DICE)
                 break;
 
-            printf("%d", current->ogValue);
+            printf("%lld", current->ogValue);
             break;
 
         case TYPE_LIST:
@@ -1218,7 +1245,7 @@ void PrintResults(Token *parent, int type)
                 printf(")");
             }
             else
-                printf("(%d)", current->value);
+                printf("(%lld)", current->value);
 
             break;
 
@@ -1243,7 +1270,7 @@ void PrintResults(Token *parent, int type)
                 printf("}");
             }
             else
-                printf("{ %d }", current->value);
+                printf("{ %lld }", current->value);
 
             break;
 
@@ -1253,7 +1280,7 @@ void PrintResults(Token *parent, int type)
     }
 
     if (!type)
-        printf("\nFINAL RESULT: [%d]\n", tokens.value);
+        printf("\nFINAL RESULT: [%lld]\n", tokens.value);
 }
 
 int Program(char *str)
@@ -1285,7 +1312,7 @@ void LoadConfig()
         return;
 
     fseek(configFile, 0, SEEK_END);
-    int fileSize = ftell(configFile);
+    long long fileSize = ftell(configFile);
     rewind(configFile);
 
     char *file = (char *)malloc(sizeof(char) * (fileSize + 1));
@@ -1300,7 +1327,7 @@ void LoadConfig()
     for (int i = 0; i < 0xff; i++)
         sBuffer[i] = (char *)malloc(sizeof(char) * 0xffff);
 
-    int iBuffer = 0;
+    long long iBuffer = 0;
     int mode = 0; // Null[0] Configs[1] Vars[2] Macros[3];
     for (int i = 0; i < bytesRead; i++)
     {
@@ -1466,13 +1493,13 @@ int main(int argsc, char *argsv[])
     if (GLOBAL_CONFIGS[SHOW_LOADED])
     {
         for (int i = 0; i < CONFIG_COUNT; i++)
-            printf("[%s]: [%d]\n", GLOBAL_NAMES[i], GLOBAL_CONFIGS[i]);
+            printf("[%s]: [%lld]\n", GLOBAL_NAMES[i], GLOBAL_CONFIGS[i]);
 
         printf("\n");
         for (int i = 0; i < varCount; i++)
         {
             Var var = vars[i];
-            printf("$[%s]: [%d]\n", var.name, var.value);
+            printf("$[%s]: [%lld]\n", var.name, var.value);
         }
 
         printf("\n");
