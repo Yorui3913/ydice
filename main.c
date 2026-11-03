@@ -61,13 +61,14 @@ typedef enum CONFIGS
 {
     DEBUG_MESSAGES,
     SHOW_LOADED,
+    PRINT_COLORS,
     FULL_DICES,
     FULL_LISTS,
     FULL_LOOPS,
     CONFIG_COUNT
 } CONFIGS;
 
-const char *GLOBAL_NAMES[CONFIG_COUNT] = {"DEBUG_MESSAGES", "SHOW_LOADED", "FULL_DICES", "FULL_LISTS", "FULL_LOOPS"};
+const char *GLOBAL_NAMES[CONFIG_COUNT] = {"DEBUG_MESSAGES", "SHOW_LOADED", "PRINT_COLORS", "FULL_DICES", "FULL_LISTS", "FULL_LOOPS"};
 bool GLOBAL_CONFIGS[CONFIG_COUNT];
 
 const char opPriority[] = {
@@ -102,12 +103,17 @@ long long Tokenizer(char *str);
 long long Calculate(Token *parent, long long id, int op);
 int Error(const char *errorType, const char *error, const char *extra)
 {
-    printf("\x1b[91m");
+    if (GLOBAL_CONFIGS[PRINT_COLORS])
+        printf("\x1b[91m");
+
     if (extra[0] == '\0')
         printf("%s ERROR: %s\n", errorType, error);
     else
         printf("%s ERROR: %s[%s]\n", errorType, error, extra);
-    printf("\x1b[0m");
+
+    if (GLOBAL_CONFIGS[PRINT_COLORS])
+        printf("\x1b[0m");
+        
     return -1;
 }
 
@@ -740,7 +746,8 @@ long long CalculateDice(Token *parent, long long id)
     {
         for (long long i = 0; i < previousVal; i++)
         {
-            long long res = ((long long)rand() << 30) | ((long long)rand()) << 15 | (long long)rand();;
+            long long res = ((long long)rand() << 30) | ((long long)rand()) << 15 | (long long)rand();
+            ;
             current->results[i] = (res % nextVal) + 1;
         }
     }
@@ -748,7 +755,8 @@ long long CalculateDice(Token *parent, long long id)
     {
         for (long long i = 0; i < previousVal; i++)
         {
-            long long res = ((long long)rand() << 45) | ((long long)rand() << 30) | ((long long)rand()) << 15 | (long long)rand();;
+            long long res = ((long long)rand() << 45) | ((long long)rand() << 30) | ((long long)rand()) << 15 | (long long)rand();
+            ;
             current->results[i] = (res % nextVal) + 1;
         }
     }
@@ -1197,14 +1205,19 @@ void PrintResults(Token *parent, int type)
                 printf("[");
                 for (int i = 0; i < current->resultCount; i++)
                 {
-                    if (i >= current->validResultCount)
-                        printf("\x1b[90m");
-                    else if (current->results[i] == 1)
-                        printf("\x1b[91m");
-                    else if (current->results[i] == current->maxValue)
-                        printf("\x1b[92m");
+                    if (GLOBAL_CONFIGS[PRINT_COLORS])
+                    {
+                        if (i >= current->validResultCount)
+                            printf("\x1b[90m");
+                        else if (current->results[i] == 1)
+                            printf("\x1b[91m");
+                        else if (current->results[i] == current->maxValue)
+                            printf("\x1b[92m");
 
-                    printf(" %lld \x1b[0m", current->results[i]);
+                        printf(" %lld \x1b[0m", current->results[i]);
+                    }
+                    else
+                        printf(" %lld ", current->results[i]);
                 }
                 printf("]");
             }
