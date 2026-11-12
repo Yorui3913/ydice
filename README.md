@@ -4,9 +4,9 @@ Dice rolling simulator via terminal
 # COMMANDS
 (x)d(y): Rolls (x) dice of (y) faces
 
-(x)d(y)v(z): Rolls (x) dice of (y) faces and choose the (z) highest ones
+(x)d(y)k(z): Rolls (x) dice of (y) faces and choose the (z) highest ones
 
-(x)d(y)dv(z): Rolls (x) dice of (y) faces and choose the (z) lowest ones
+(x)d(y)dk(z): Rolls (x) dice of (y) faces and choose the (z) lowest ones
 
 ---
 
@@ -37,7 +37,7 @@ Unary: - !
 
 -SHOW_LOADED: Shows all Vars and Macros loaded.
 
--PRINT_COLORS: Prints dice results as colored (Green for Highest value, Red for Lowest value, darker/grayer colors for "ignored" results). Some terminals might not have support for this, if that's the case (weird codes appearing and no colors) toggle it off.
+-PRINT_COLORS: Prints dice results as colored (Green for Highest value, Red for Lowest value, Grey for "ignored" results). Some terminals might not have support for this, if that's the case (weird codes appearing and no colors) toggle it off.
 
 -FULL_DICES: Shows all dice results of each individual dice roll if on.
 

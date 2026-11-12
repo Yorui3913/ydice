@@ -113,7 +113,7 @@ int Error(const char *errorType, const char *error, const char *extra)
 
     if (GLOBAL_CONFIGS[PRINT_COLORS])
         printf("\x1b[0m");
-        
+
     return -1;
 }
 
@@ -386,7 +386,7 @@ void CopyChildren(Token *source, Token *dest)
     dest->children = (Token *)malloc(sizeof(Token) * source->childCount);
     memcpy(dest->children, source->children, sizeof(Token) * source->childCount);
 
-    for (int i = 0; i < source->childCount; i++)
+    for (long long i = 0; i < source->childCount; i++)
         CopyChildren(&source->children[i], &dest->children[i]);
 }
 
@@ -420,11 +420,6 @@ long long Tokenizer(char *str)
         case '-':
             if (numNull && (currentToken->childCount == 0 || currentToken->children[currentToken->childCount - 1].type == TYPE_OPERATOR))
             {
-                if (currentToken->childCount == 0)
-                    printf("\nCC: [%c]\n\n");
-                else
-                    printf("\nTYPE: [%s]\n\n", GetTypeString(currentToken->children[currentToken->childCount - 1].type));
-
                 AddToken(TYPE_UNARY, c);
                 break;
             }
@@ -489,7 +484,7 @@ long long Tokenizer(char *str)
             break;
 
         // Advantage
-        case 'v':
+        case 'k':
             if (!numNull)
             {
                 AddToken(TYPE_CONSTANT, num);
@@ -507,7 +502,7 @@ long long Tokenizer(char *str)
                 num = 0;
             }
 
-            if (i + 1 < strlength && str[i + 1] == 'v')
+            if (i + 1 < strlength && str[i + 1] == 'k')
             {
                 AddToken(TYPE_ADV, 0);
                 i++;
@@ -729,7 +724,12 @@ long long CalculateDice(Token *parent, long long id)
     current->maxValue = nextVal;
     current->resultCount = previousVal;
     current->results = (long long *)malloc(sizeof(long long) * current->resultCount);
-    if (nextVal < 0x7fff)
+    if (nextVal == 0)
+    {
+        for (long long i = 0; i < previousVal; i++)
+            current->results[i] = 0;
+    }
+    else if (nextVal < 0x7fff)
     {
         for (long long i = 0; i < previousVal; i++)
             current->results[i] = (rand() % nextVal) + 1;
@@ -747,7 +747,6 @@ long long CalculateDice(Token *parent, long long id)
         for (long long i = 0; i < previousVal; i++)
         {
             long long res = ((long long)rand() << 30) | ((long long)rand()) << 15 | (long long)rand();
-            ;
             current->results[i] = (res % nextVal) + 1;
         }
     }
@@ -756,7 +755,6 @@ long long CalculateDice(Token *parent, long long id)
         for (long long i = 0; i < previousVal; i++)
         {
             long long res = ((long long)rand() << 45) | ((long long)rand() << 30) | ((long long)rand()) << 15 | (long long)rand();
-            ;
             current->results[i] = (res % nextVal) + 1;
         }
     }
@@ -769,21 +767,21 @@ long long CalculateDice(Token *parent, long long id)
         if (parent->children[id + 2].value)
         {
             qsort(current->results, previousVal, sizeof(long long), AdvCompare);
-            textMod[0] = 'v';
+            textMod[0] = 'k';
             textMod[1] = '\0';
         }
         else
         {
             qsort(current->results, previousVal, sizeof(long long), DsvCompare);
             textMod[0] = 'd';
-            textMod[1] = 'v';
+            textMod[1] = 'k';
             textMod[2] = '\0';
         }
 
         if (id + 3 < parent->childCount && parent->children[id + 3].type == TYPE_CONSTANT)
         {
             current->validResultCount = parent->children[id + 3].value;
-            for (int i = 0; i < current->validResultCount; i++)
+            for (long long i = 0; i < current->validResultCount; i++)
                 current->result += current->results[i];
 
             snprintf(textModNum, 256, "%lld", current->validResultCount);
@@ -808,7 +806,7 @@ long long CalculateDice(Token *parent, long long id)
     else
     {
         current->validResultCount = current->resultCount;
-        for (int i = 0; i < previousVal; i++)
+        for (long long i = 0; i < previousVal; i++)
             current->result += current->results[i];
 
         newID++;
@@ -960,7 +958,7 @@ long long Calculate(Token *parent, long long id, int op)
         }
 
         PrintMessage("CALCULATED %lld %c %lld | RESULT: %lld\n", previousVal, current->value, nextVal, finalVal);
-        int idOff = (newID == id);
+        long long idOff = (newID == id);
         parent->children[newID + idOff].value = finalVal;
         if (updateNextNext)
             nextNext->value = finalVal;
@@ -983,7 +981,7 @@ long long Calculate(Token *parent, long long id, int op)
         if (next == NULL)
             return Error("UNARY OPERATOR", "Next Token is Null.", "");
 
-        int nextUnVal = 0;
+        long long nextUnVal = 0;
         bool updateNextNextUn = false;
         if (nextNext != NULL && nextNext->type == TYPE_DICE)
         {
@@ -1016,7 +1014,7 @@ long long Calculate(Token *parent, long long id, int op)
         else
             Error("UNARY OPERATOR", "Next Token is not of Constant, List or Dice Types. ", GetTypeString(next->type));
 
-        int finalUnVal = 0;
+        long long finalUnVal = 0;
         switch (current->value)
         {
         case '-':
@@ -1032,14 +1030,14 @@ long long Calculate(Token *parent, long long id, int op)
         }
 
         PrintMessage("CALCULATED %c%lld | RESULT: %lld\n", current->value, nextUnVal, finalUnVal);
-        int idOffUn = (newID == id);
+        long long idOffUn = (newID == id);
         parent->children[newID + idOffUn].value = finalUnVal;
         if (updateNextNextUn)
             nextNext->value = finalUnVal;
 
         if (newID + 1 + idOffUn >= parent->childCount)
         {
-            parent->value = finalVal;
+            parent->value = finalUnVal;
             parent->type = TYPE_CONSTANT;
         }
         else if (nextNext != NULL && nextNext->type == TYPE_OPERATOR && opPriority[nextNext->value] > op)
@@ -1143,7 +1141,7 @@ long long Calculate(Token *parent, long long id, int op)
 
         Calculate(&next->children[0], 0, 0);
         bool conditional = next->children[0].value;
-        int ifResult = 0;
+        long long ifResult = 0;
         if (conditional)
         {
             Calculate(&next->children[1], 0, 0);
@@ -1178,14 +1176,14 @@ long long Calculate(Token *parent, long long id, int op)
 void PrintResults(Token *parent, int type)
 {
     bool typeThing = false;
-    for (int c = 0; c < parent->childCount; c++)
+    for (long long c = 0; c < parent->childCount; c++)
     {
         Token *current = &parent->children[c];
         Token *next = NULL;
         switch (current->ogType)
         {
         case TYPE_DICE:
-            int off = 0;
+            long long off = 0;
             bool skip = false;
             while (c + off < parent->childCount)
             {
@@ -1203,7 +1201,7 @@ void PrintResults(Token *parent, int type)
             if (GLOBAL_CONFIGS[FULL_DICES])
             {
                 printf("[");
-                for (int i = 0; i < current->resultCount; i++)
+                for (long long i = 0; i < current->resultCount; i++)
                 {
                     if (GLOBAL_CONFIGS[PRINT_COLORS])
                     {
@@ -1217,7 +1215,12 @@ void PrintResults(Token *parent, int type)
                         printf(" %lld \x1b[0m", current->results[i]);
                     }
                     else
+                    {
+                        if (i >= current->validResultCount)
+                            break;
+                            
                         printf(" %lld ", current->results[i]);
+                    }
                 }
                 printf("]");
             }
@@ -1272,7 +1275,7 @@ void PrintResults(Token *parent, int type)
             if (GLOBAL_CONFIGS[FULL_LOOPS])
             {
                 printf("{");
-                for (int i = 1; i < next->childCount; i++)
+                for (long long i = 1; i < next->childCount; i++)
                 {
                     printf("(");
                     PrintResults(&next->children[i], 2);
@@ -1396,7 +1399,7 @@ void LoadConfig()
             {
                 file++;
                 c = *file;
-                int mult = -1;
+                mult = -1;
             }
             while (c >= '0' && c <= '9')
             {
@@ -1495,10 +1498,6 @@ void LoadConfig()
     }
 }
 
-void SaveConfig()
-{
-}
-
 int main(int argsc, char *argsv[])
 {
     LoadConfig();
@@ -1550,6 +1549,5 @@ int main(int argsc, char *argsv[])
     else
         Program(argsv[1]);
 
-    SaveConfig();
     return 0;
 }
